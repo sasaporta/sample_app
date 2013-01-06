@@ -1,15 +1,8 @@
 require 'spec_helper'
-
-def sign_in(user)
-  visit signin_path
-  fill_in "Email",    with: user.email
-  fill_in "Password", with: user.password
-  click_button "Sign in"
-  # Sign in when not using Capybara as well.
-  cookies[:remember_token] = user.remember_token
-end
+require 'helpers/application_helper_spec.rb'
 
 describe "Authentication" do
+  include Helpers
 
   subject { page }
 
@@ -51,6 +44,10 @@ describe "Authentication" do
       describe "followed by signout" do
           before { click_link "Sign out" }
           it { should have_link('Sign in') }
+
+          it { should_not have_link('Profile') }
+          it { should_not have_link('Settings') }
+          it { should_not have_link('Sign out') }
       end
     end
   end
@@ -72,6 +69,17 @@ describe "Authentication" do
 
           it "should render the desired protected page" do
             page.should have_selector('title', text: 'Edit user')
+          end
+
+          describe "and signing in again" do
+            before do
+              delete signout_path
+              sign_in user
+            end
+            it "should render the profile page" do
+              page.should have_selector('h1',    text: user.name)
+              page.should have_selector('title', text: user.name)
+            end
           end
         end
       end
@@ -120,6 +128,22 @@ describe "Authentication" do
       describe "submitting a DELETE request to the Users#destroy action" do
         before { delete user_path(user) }
         specify { response.should redirect_to(root_path) }        
+      end
+
+      describe "attempting to access the new user page while signed in" do
+        before {
+          sign_in user
+          get new_user_path
+        }
+        specify { response.should redirect_to(root_path) }
+      end
+
+      describe "attempting to access the create user page while signed in" do
+        before {
+          sign_in user
+          post users_path
+        }
+        specify { response.should redirect_to(root_path) }
       end
     end
   end
